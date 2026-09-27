@@ -159,7 +159,7 @@ class SSLChecks(ArtemisBase):  # type: ignore
             server_scan_req = ServerScanRequest(
                 server_location=server_location,
                 scan_commands={ScanCommand.CERTIFICATE_INFO, ScanCommand.HEARTBLEED, ScanCommand.OPENSSL_CCS_INJECTION,
-                               ScanCommand.ROBOT},
+                               ScanCommand.ROBOT, ScanCommand.SSL_3_0_CIPHER_SUITES},
             )
             scanner = Scanner(concurrent_server_scans_limit=1)
             scanner.queue_scans([server_scan_req])
@@ -229,6 +229,13 @@ class SSLChecks(ArtemisBase):  # type: ignore
                                              RobotScanResultEnum.VULNERABLE_STRONG_ORACLE]:
                 messages.append(f"{domain}: ROBOT vulnerable")
                 result["robot"] = True
+
+            ssl_3_0_cipher_suites_result = server_scan_result.scan_result.ssl_3_0_cipher_suites.result
+            for cipher_suite in ssl_3_0_cipher_suites_result.accepted_cipher_suites:
+                if "CBC" in cipher_suite.cipher_suite.name:
+                    messages.append(f"{domain}: POODLE vulnerable")
+                    result["poodle"] = True
+                    break
 
         if messages:
             status = TaskStatus.INTERESTING
